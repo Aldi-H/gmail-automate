@@ -1,0 +1,28 @@
+#* Get n8n docker file from official repo v.1.113.2
+FROM n8nio/n8n:1.113.2
+
+#* Switch to root user to install depedencies and build
+USER root
+
+#* Install depedencies
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    python3 \
+    python3-pip \
+    python3-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+#* Installl pip packages
+RUN pip3 install --no-cache-dir --upgrade pip
+
+#* Install Python libraries for excel and pydrive2
+RUN pip3 install --no-chache-dir \
+    openpyxl \
+    pandas \
+    pydrive2
+
+#* Set Workdir for excel-merge script
+WORKDIR /scripts
+
+#* Switch back to n8n user
+USER node
