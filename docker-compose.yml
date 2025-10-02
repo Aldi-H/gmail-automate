@@ -11,7 +11,7 @@ services:
     volumes:
       - ./data:/home/node/.n8n
       - ./scripts:/scripts
-      - .credentials:/credentials
+      - ./credentials:/credentials
     networks:
       - n8n_network
 
