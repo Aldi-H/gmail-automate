@@ -1,4 +1,4 @@
-service:
+services:
   n8n:
     build: ./docker/n8n
     container_name: gmail-automate-n8n
