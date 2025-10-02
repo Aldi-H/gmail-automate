@@ -26,7 +26,8 @@ RUN python3 -m venv /venv \
     && pip3 install --no-cache-dir --upgrade pip \
     openpyxl \
     pandas \
-    pydrive2
+    pydrive2 \
+    python-dotenv
 
 #* Set Workdir for excel-merge script
 WORKDIR /scripts
