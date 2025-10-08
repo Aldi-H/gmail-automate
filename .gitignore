@@ -1,2 +1,5 @@
 /credentials
 /data
+
+.env
+settings.yaml
