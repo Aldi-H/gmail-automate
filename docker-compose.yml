@@ -8,6 +8,8 @@ services:
     environment:
       - GENERIC_TIMEZONE=Asia/Jakarta
       - TZ=Asia/Jakarta
+    env_file:
+      - .env
     volumes:
       - ./data:/home/node/.n8n
       - ./scripts:/scripts

@@ -29,8 +29,18 @@ RUN python3 -m venv /venv \
     pydrive2 \
     python-dotenv
 
+ENV PATH="/venv/bin:$PATH"
+
+# RUN pip3 install --no-cache-dir --upgrade pip \
+#     openpyxl \
+#     pandas \
+#     pydrive2 \
+#     python-dotenv
+
 #* Set Workdir for excel-merge script
 WORKDIR /scripts
+
+RUN mkdir -p /scripts && chown -R node:node /scripts
 
 #* Switch back to n8n user
 USER node
