@@ -27,7 +27,12 @@ RUN python3 -m venv /venv \
     openpyxl \
     pandas \
     pydrive2 \
-    python-dotenv
+    python-dotenv \
+    # add google api libraries
+    google-auth \
+    google-auth-oauthlib \
+    google-auth-httplib2 \
+    google-api-python-client
 
 ENV PATH="/venv/bin:$PATH"
 
