@@ -1,0 +1,385 @@
+{
+  "name": "n8n-Gmail-Automation",
+  "nodes": [
+    {
+      "parameters": {
+        "public": true,
+        "initialMessages": "Start a Workflow to download all email attachment\n\nfor example type: DTH_[Month]_[Year]",
+        "options": {
+          "responseMode": "responseNode"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -656,
+        752
+      ],
+      "id": "f01d7e8a-9d9f-41b6-ade5-7b7824993f77",
+      "name": "When chat message received",
+      "webhookId": "9151831f-3be8-46b0-a57a-da50e75de295"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "filters": {
+          "q": "=in:inbox subject:{{ $json.chatInput }}((has:attachment OR has:drive) has:spreadsheet) has:attachment"
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        -448,
+        752
+      ],
+      "id": "376b165f-e4d1-46b4-b2af-5662b3938b49",
+      "name": "Get All Message by Email Subject",
+      "webhookId": "437c6b5c-bf02-48b3-9994-3055f240247c",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "dQH8keaBgPUAonv0",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "1077d305-a171-4fe2-9863-9a4a6270b8b1",
+              "leftValue": "={{ $json.labels[3].id }}",
+              "rightValue": "UNREAD",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -256,
+        752
+      ],
+      "id": "a80721ea-89cd-4cc2-a816-05b31df410ce",
+      "name": "Filter Email Status by Read or Unread"
+    },
+    {
+      "parameters": {
+        "operation": "markAsRead",
+        "messageId": "={{ $json.id }}"
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        128,
+        512
+      ],
+      "id": "cfbec54e-62e5-4b41-82b8-a90209fd634d",
+      "name": "Mark as Read",
+      "webhookId": "82edebd2-13c2-4aad-bf1e-7e74f3da2051",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "dQH8keaBgPUAonv0",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "messageId": "={{ $json.id }}",
+        "simple": false,
+        "options": {
+          "downloadAttachments": true
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        336,
+        512
+      ],
+      "id": "6e6601f8-4f08-4862-a0da-bafd0e210942",
+      "name": "Get a Single Message",
+      "webhookId": "88a4727c-a2dd-4211-8327-685fa39a850c",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "dQH8keaBgPUAonv0",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.chatInput }}",
+                    "rightValue": "aldihimawan@student.ub.ac.id",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "44a01044-dd73-46e4-a087-2a2f08bf7856"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "1276fcc4-d0c3-4f3c-87c4-e9c5884e1103",
+                    "leftValue": "={{ $json.chatInput }}",
+                    "rightValue": "aldihimawan@student.ub.ac.id",
+                    "operator": {
+                      "type": "string",
+                      "operation": "notEquals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        -448,
+        1760
+      ],
+      "id": "8859ec11-d03b-41b4-92f5-ec0f697d7785",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "command": "python3 /scripts/merge_excel_gdrive.py\n"
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        912,
+        768
+      ],
+      "id": "c0c2ca19-6f70-4c7f-b32b-ee3f917a7654",
+      "name": "Execute Command",
+      "alwaysOutputData": false
+    },
+    {
+      "parameters": {
+        "inputDataFieldName": "attachment_0",
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "=1i7fn-fujH5vClArOoDkU3ZKZO0nbfcUl",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        720,
+        768
+      ],
+      "id": "03ee7653-7137-42d0-ba96-281e11bf7db4",
+      "name": "Upload file1",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "Dke1pqvyPzB0ngcY",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "messageId": "={{ $json.id }}",
+        "simple": false,
+        "options": {
+          "downloadAttachments": true
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        224,
+        992
+      ],
+      "id": "195477e2-a838-4581-913f-e31b9c4104be",
+      "name": "Get a Single Message2",
+      "webhookId": "88a4727c-a2dd-4211-8327-685fa39a850c",
+      "alwaysOutputData": true,
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "dQH8keaBgPUAonv0",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "let raw = $input.first().json.stdout;\n\n// Pastikan bertipe string\nif (typeof raw !== \"string\") raw = String(raw);\n\n// Ambil hanya blok JSON yang valid (dari { pertama sampai } terakhir)\nconst match = raw.match(/\\{[\\s\\S]*\\}/);\nif (!match) {\n  throw new Error(\"Tidak ditemukan blok JSON yang valid di stdout:\\n\" + raw);\n}\n\nconst jsonString = match[0].trim();\n\nlet data;\ntry {\n  data = JSON.parse(jsonString);\n} catch (e) {\n  throw new Error(\"❌ Gagal parse JSON: \" + e.message + \"\\nIsi JSON yang dicoba parse:\\n\" + jsonString);\n}\n\nreturn [{ json: data }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        768
+      ],
+      "id": "ee6fac4f-5a4d-4e00-9449-040a71ac5ef6",
+      "name": "Code in JavaScript1"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "Get All Message by Email Subject",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get All Message by Email Subject": {
+      "main": [
+        [
+          {
+            "node": "Filter Email Status by Read or Unread",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Email Status by Read or Unread": {
+      "main": [
+        [
+          {
+            "node": "Mark as Read",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Get a Single Message2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark as Read": {
+      "main": [
+        [
+          {
+            "node": "Get a Single Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get a Single Message": {
+      "main": [
+        [
+          {
+            "node": "Upload file1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [],
+        []
+      ]
+    },
+    "Get a Single Message2": {
+      "main": [
+        [
+          {
+            "node": "Upload file1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload file1": {
+      "main": [
+        [
+          {
+            "node": "Execute Command",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Command": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "10b57101-a141-4057-b015-7b8c794e55ea",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "0419dd611aebaadfe28c93f0eda7ed750659f4f9e46291acb4f925f982c16c14"
+  },
+  "id": "MWL1d4NqOxR48oLX",
+  "tags": []
+}
