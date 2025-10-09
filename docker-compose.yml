@@ -14,6 +14,7 @@ services:
       - ./data:/home/node/.n8n
       - ./scripts:/scripts
       - ./credentials:/credentials
+      - /mnt/c/Users/LENOVO/Downloads:/downloads
     networks:
       - n8n_network
 
