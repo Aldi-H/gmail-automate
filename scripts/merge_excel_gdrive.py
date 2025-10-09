@@ -1,19 +1,21 @@
+# type: ignore
 import pandas as pd
 import os
-from dotenv import load_dotenv # pyright: ignore[reportMissingImports]
+import json
+from dotenv import load_dotenv
 from datetime import datetime
-from google.oauth2.credentials import Credentials # pyright: ignore[reportMissingImports]
-from google.oauth2 import service_account # pyright: ignore[reportMissingImports]
-from googleapiclient.discovery import build # pyright: ignore[reportMissingImports]
-from googleapiclient.http import MediaFileUpload, MediaIoBaseDownload # pyright: ignore[reportMissingImports]
+from google.oauth2 import service_account
+from googleapiclient.discovery import build
+from googleapiclient.http import MediaIoBaseDownload
 import io
 import sys
-import traceback
 
 load_dotenv()
 SERVICE_ACCOUNT_FILE =  os.getenv("CREDENTIAL_FILES")
 FOLDER_ID = os.getenv("FOLDER_ID")
 LOCAL_SAVE_PATH = os.getenv("LOCAL_SAVE_PATH")
+
+SAVE_TO_DOWNLOADS = True
 
 def authenticate_gdrive():
   SCOPES = ["https://www.googleapis.com/auth/drive"]
@@ -54,8 +56,8 @@ def download_file(service, file_id, file_name, temp_dir="/tmp"):
 
   done = False
   while done is False:
-    status, done = downloader.next_chunk()
-    print(f"Download {int(status.progress() * 100)}%")
+    done = downloader.next_chunk()
+    # print(f"Download {int(status.progress() * 100)}%")
 
   fh.close()
 
@@ -69,67 +71,76 @@ def merge_excel_files(file_paths):
     try:
       df = pd.read_excel(file_path, sheet_name=0, skiprows=4)
       all_data.append(df)
-      print(f"✓ Berhasil membaca: {os.path.basename(file_path)}")
+      # print(f"✓ Berhasil membaca: {os.path.basename(file_path)}")
     except Exception as e:
-      print(f"✗ Error membaca {file_path}: {str(e)}")
+      # print(f"✗ Error membaca {file_path}: {str(e)}")
+      raise e
 
   if all_data:
     merged_df = pd.concat(all_data, ignore_index=True)
-    print(f"\nTotal baris setelah penggabungan: {len(merged_df)}")
+    # print(f"\nTotal rows after merging: {len(merged_df)}")
 
     return merged_df
   else:
-    raise Exception("Tidak ada data yang berhasil dibaca")
+    raise Exception("✗ No data to merge")
 
-
-def save_to_local(df, output_path):
-  os.makedirs(os.path.dirname(output_path), exist_ok=True)
-
+def save_to_local(df, directory, filename):
+  if not os.path.exists(directory):
+    try:
+      os.makedirs(directory, exist_ok=True)
+    except Exception as e:
+      # print(f"✗ Gagal membuat direktori {directory}: {str(e)}", file=sys.stderr)
+      raise e
+    
+  if not os.access(directory, os.W_OK):
+    raise PermissionError(f"✗ Didn't have write permission for {directory}")
+  
+  output_path = os.path.join(directory, filename)
   df.to_excel(output_path, index=False, engine="openpyxl")
-
+  
   file_size = os.path.getsize(output_path)
   file_size_mb = file_size / (1024 * 1024)
-
-  print(f"✓ File tersimpan: {output_path}")
-  print(f"✓ Ukuran file: {file_size_mb:.2f} MB")
-  print(f"✓ Total rows: {len(df)}")
-  print(f"✓ Total columns: {len(df.columns)}")
-
-  return output_path
+  
+  return {
+    "path": output_path,
+    "size_mb": file_size_mb,
+    "total_rows": len(df),
+    "total_columns": len(df.columns)
+  }
 
 
 def main():
   try:
-    print("=" * 60)
-    print("SCRIPT PENGGABUNGAN FILE EXCEL - SAVE TO LOCAL")
-    print("=" * 60)
+    # print("=" * 60)
+    # print("SCRIPT PENGGABUNGAN FILE EXCEL - SAVE TO LOCAL")
+    # print("=" * 60)
 
     # 1. Autentikasi Google Drive
-    print("\n[1] Melakukan autentikasi ke Google Drive...")
+    # print("\n[1] Melakukan autentikasi ke Google Drive...")
     service = authenticate_gdrive()
-    print("✓ Autentikasi berhasil")
+    # print("✓ Autentikasi berhasil")
 
     # 2. Ambil daftar file Excel dari folder
-    print(f"\n[2] Mengambil daftar file Excel dari folder...")
+    # print(f"\n[2] Mengambil daftar file Excel dari folder...")
     excel_files = list_excel_files(service, FOLDER_ID)
 
     if not excel_files:
-      print("✗ Tidak ada file Excel yang ditemukan di folder")
+      # print("✗ Tidak ada file Excel yang ditemukan di folder")
       sys.exit(1)
 
-    print(f"✓ Ditemukan {len(excel_files)} file Excel:")
-    for f in excel_files:
-      print(f"  - {f['name']}")
+    # print(f"✓ Found {len(excel_files)} Excel files:")
+    # for f in excel_files:
+    #   print(f"  - {f['name']}")
 
     # 3. Download semua file
-    print(f"\n[3] Mendownload file dari Google Drive...")
+    # print(f"\n[3] Mendownload file dari Google Drive...")
     downloaded_files = []
     for file in excel_files:
       file_path = download_file(service, file["id"], file["name"])
       downloaded_files.append(file_path)
 
     # 4. Gabungkan file Excel
-    print(f"\n[4] Menggabungkan file Excel...")
+    # print(f"\n[4] Menggabungkan file Excel...")
     merged_df = merge_excel_files(downloaded_files)
 
     # 5. Simpan hasil penggabungan ke LOCAL
@@ -137,32 +148,65 @@ def main():
     month = now.strftime("%B")
     year = now.strftime("%Y")
     output_filename = f"DTH_{month}_{year}.xlsx"
-    output_path = os.path.join(LOCAL_SAVE_PATH, output_filename)
 
-    print(f"\n[5] Menyimpan hasil penggabungan ke local...")
-    save_to_local(merged_df, output_path)
+    saved_locations = []
+    
+    if SAVE_TO_DOWNLOADS:
+      if os.path.exists(LOCAL_SAVE_PATH):
+        # print(f"\n[6] Saving to Downloads folder...", file=sys.stderr)
+
+        try:
+          downloads_info = save_to_local(merged_df, LOCAL_SAVE_PATH, output_filename)
+          saved_locations.append({
+            "location": "downloads",
+            "path": downloads_info["path"],
+            "size_mb": downloads_info["size_mb"]
+          })
+          # print(f"✓ Saved to: {downloads_info['path']}", file=sys.stderr)
+        except Exception as e:
+          # print(f"⚠ Error saving to Downloads: {str(e)}", file=sys.stderr)
+          raise e
+      else:
+        # print(f"⚠ Downloads path not mounted: {LOCAL_SAVE_PATH}", file=sys.stderr)
+        # print(f"  To enable, add volume mount in docker-compose.yml:", file=sys.stderr)
+        # print(f"  - /mnt/c/Users/YOUR_USERNAME/Downloads:/downloads", file=sys.stderr)
+        raise Exception(f"Downloads path not mounted: {LOCAL_SAVE_PATH}", file=sys.stderr)
 
     # 6. Cleanup temporary files
-    print(f"\n[6] Membersihkan file temporary...")
+    # print(f"\n[6] Membersihkan file temporary...")
     for file_path in downloaded_files:
       if os.path.exists(file_path):
         os.remove(file_path)
-    print("✓ Cleanup selesai")
+    # print("✓ Cleanup selesai")
 
-    print("\n" + "=" * 60)
-    print("PROSES SELESAI!")
-    print("=" * 60)
-    print(f"File tersimpan di: {output_path}")
+    # print("\n" + "=" * 60)
+    # print("PROSES SELESAI!")
+    # print("=" * 60)
 
-    return output_path
+    result = {
+      "success": True,
+      "filename": output_filename,
+      "total_rows": len(merged_df),
+      "total_columns": len(merged_df.columns),
+      "files_merged": len(excel_files),
+      "saved_locations": saved_locations,
+      "created_at": datetime.now().isoformat()
+    }
+
+    print(json.dumps(result, indent=2))
+
+    return 0
 
   except Exception as e:
-    print(f"\n✗ ERROR: {str(e)}")
+    result = {
+      "success": False,
+      "error": str(e)
+    }
 
-    traceback.print_exc()
+    print(json.dumps(result, indent=2), file=sys.stderr)
+
     sys.exit(1)
-
 
 if __name__ == "__main__":
   result = main()
-  print(f"\nOutput file: {result}")
+  # print(f"\nOutput file: {result}")
