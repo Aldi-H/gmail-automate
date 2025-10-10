@@ -14,7 +14,8 @@ services:
       - ./data:/home/node/.n8n
       - ./scripts:/scripts
       - ./credentials:/credentials
-      - /mnt/c/Users/LENOVO/Downloads:/downloads
+      # - /mnt/c/Users/LENOVO/Downloads:/downloads
+      - ${HOST_DOWNLOADS_PATH:-./downloads}:/downloads:rw
     networks:
       - n8n_network
 
