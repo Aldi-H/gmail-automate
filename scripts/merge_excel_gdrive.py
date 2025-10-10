@@ -9,6 +9,7 @@ from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseDownload
 import io
 import sys
+import re
 
 load_dotenv()
 SERVICE_ACCOUNT_FILE =  os.getenv("CREDENTIAL_FILES")
@@ -69,20 +70,59 @@ def merge_excel_files(file_paths):
 
   for file_path in file_paths:
     try:
-      df = pd.read_excel(file_path, sheet_name=0, skiprows=4)
+      df = pd.read_excel(
+        file_path,
+        sheet_name=0,
+        skiprows=4,
+        dtype={
+          "KODE_AKUN_BELANJA": str,
+          "KODE_AKUN_POTONGAN_PAJAK": str,
+          "NPWP_BENDAHARA": str,
+          "ID_BILLING": str
+        }
+      )
       all_data.append(df)
       # print(f"✓ Berhasil membaca: {os.path.basename(file_path)}")
     except Exception as e:
       # print(f"✗ Error membaca {file_path}: {str(e)}")
       raise e
-
-  if all_data:
-    merged_df = pd.concat(all_data, ignore_index=True)
-    # print(f"\nTotal rows after merging: {len(merged_df)}")
-
-    return merged_df
-  else:
+    
+  if not all_data:
     raise Exception("✗ No data to merge")
+
+  merged_df = pd.concat(all_data, ignore_index=True)
+  merged_df = format_dataframe(merged_df)
+  # print(f"\nTotal rows after merging: {len(merged_df)}")
+
+  return merged_df
+
+def format_dataframe(df):
+  currency_columns = ["NILAI_BELANJA_SP2D", "JUMLAH_PAJAK"]
+  for col in currency_columns:
+    if col in df.columns:
+      df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0).astype('int64')
+      
+  if "KODE_AKUN_BELANJA" in df.columns:
+    df["KODE_AKUN_BELANJA"] = df["KODE_AKUN_BELANJA"].apply(
+      lambda x: str(x).replace(".", "").strip() if pd.notna(x) else ""
+    )
+
+  if "NPWP_BENDAHARA" in df.columns:
+    df["NPWP_BENDAHARA"] = df["NPWP_BENDAHARA"].apply(
+      lambda x: re.sub(r"[^\d]", "", str(x)) if pd.notna(x) else ""
+    )
+
+  if "ID_BILLING" in df.columns:
+    df["ID_BILLING"] = df["ID_BILLING"].apply(
+      lambda x: str(x).replace(".0", "") if pd.notna(x) else ""
+    )
+
+  if "KODE_AKUN_POTONGAN_PAJAK" in df.columns:
+    df["KODE_AKUN_POTONGAN_PAJAK"] = df["KODE_AKUN_POTONGAN_PAJAK"].apply(
+      lambda x: str(x).replace("-100", "").strip() if pd.notna(x) else ""
+    )
+
+  return df
 
 def save_to_local(df, directory, filename):
   if not os.path.exists(directory):
