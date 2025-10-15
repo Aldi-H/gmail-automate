@@ -78,7 +78,8 @@ def merge_excel_files(file_paths):
           "KODE_AKUN_BELANJA": str,
           "KODE_AKUN_POTONGAN_PAJAK": str,
           "NPWP_BENDAHARA": str,
-          "ID_BILLING": str
+          "ID_BILLING": str,
+          "NTPN": str
         }
       )
       all_data.append(df)
